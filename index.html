@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .clock { width: 200px; height: 200px; border: 2px solid black; border-radius: 50%; position: relative; }
+        .hand { position: absolute; width: 50%; height: 4px; background: black; top: 50%; transform-origin: 100%; transition: transform 0.5s cubic-bezier(.4, 2.3, .3, 1); border-radius: 2px; }
+        .hour { width: 35%; margin-left: 15%; height: 6px; }
+        .min { width: 45%; margin-left: 5%; height: 4px; }
+        .sec { width: 50%; height: 2px; background: red; }
+    </style>
+</head>
+<body>
+    <h3>Berlin</h3>
+    <div class="clock" id="berlin">
+        <div class="hand hour" id="berlin-hour"></div>
+        <div class="hand min" id="berlin-min"></div>
+        <div class="hand sec" id="berlin-sec"></div>
+    </div>
+    <div id="berlin-digi"></div>
+    <h3>NYC</h3>
+    <div class="clock" id="nyc">
+        <div class="hand hour" id="nyc-hour"></div>
+        <div class="hand min" id="nyc-min"></div>
+        <div class="hand sec" id="nyc-sec"></div>
+    </div>
+    <div id="nyc-digi"></div>
+
+    <script>
+        function updateClocks() {
+            const getParts = (tz) => {
+                const date = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
+                return { h: date.getHours(), m: date.getMinutes(), s: date.getSeconds() };
+            };
+
+            const b = getParts('Europe/Berlin');
+            const n = getParts('America/New_York');
+
+            rotate('berlin', b.h, b.m, b.s);
+            rotate('nyc', n.h, n.m, n.s);
+            
+            document.getElementById('berlin-digi').innerText = `${b.h}:${b.m.toString().padStart(2, '0')}`;
+            document.getElementById('nyc-digi').innerText = `${n.h}:${n.m.toString().padStart(2, '0')}`;
+        }
+
+        function rotate(city, h, m, s) {
+            document.getElementById(`${city}-hour`).style.transform = `rotate(${h * 30 + m * 0.5 + 90}deg)`;
+            document.getElementById(`${city}-min`).style.transform = `rotate(${m * 6 + 90}deg)`;
+            document.getElementById(`${city}-sec`).style.transform = `rotate(${s * 6 + 90}deg)`;
+        }
+
+        setInterval(updateClocks, 1000);
+        updateClocks();
+    </script>
+</body>
+</html>
