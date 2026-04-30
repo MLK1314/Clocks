@@ -171,6 +171,28 @@
     .alarm-status.active { color:#880000; animation:pulse 1s ease-in-out infinite; }
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 
+    .song-row {
+      width:100%; display:flex; align-items:center; gap:12px;
+      flex-wrap:wrap; justify-content:center;
+      padding-top:12px; border-top:1px solid #1e1e1e;
+    }
+    .song-row label { font-size:9px; letter-spacing:2px; color:#555; }
+    .song-upload-label {
+      display:flex; align-items:center; gap:8px;
+      background:#0a0a0a; border:1px dashed #333; border-radius:6px;
+      padding:7px 14px; cursor:pointer;
+      transition:border-color 0.2s, background 0.2s;
+    }
+    .song-upload-label:hover { border-color:#880000; background:#110000; }
+    .song-upload-label span { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; color:#555; }
+    #songFile { display:none; }
+    .song-name { font-family:'Share Tech Mono',monospace; font-size:9px; letter-spacing:1px; color:#660000; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .mode-btn { background:#0a0a0a; border:1px solid #222; border-radius:4px; padding:5px 10px; font-family:'Share Tech Mono',monospace; font-size:8px; color:#444; letter-spacing:1px; cursor:pointer; transition:all 0.2s; }
+    .mode-btn.active { background:#1c0000; border-color:#880000; color:#cc3300; }
+    .vol-wrap { display:flex; align-items:center; gap:8px; }
+    .vol-wrap label { font-size:9px; letter-spacing:2px; color:#555; }
+    input[type=range].vol-slider { width:80px; accent-color:var(--red); }
+
     /* ── CLOCKS ── */
     .clocks {
       display:flex; flex-wrap:wrap; gap:32px;
@@ -294,6 +316,21 @@
     <button class="btn-clear" id="btnClear">CLEAR</button>
   </div>
   <div class="alarm-status" id="alarmStatus">KEIN ALARM GESETZT</div>
+  <div class="song-row">
+    <label>ALARM-SOUND</label>
+    <label class="song-upload-label" for="songFile">
+      <span>&#127925;</span>
+      <span id="uploadTxt">SONG HOCHLADEN</span>
+    </label>
+    <input type="file" id="songFile" accept="audio/*" />
+    <span class="song-name" id="songName">STANDARD-BUZZER</span>
+    <div class="vol-wrap">
+      <label>VOL</label>
+      <input type="range" class="vol-slider" id="volSlider" min="0" max="1" step="0.01" value="0.8" />
+    </div>
+    <button class="mode-btn active" id="modeLoop">LOOP</button>
+    <button class="mode-btn" id="modeOnce">EINMAL</button>
+  </div>
 </div>
 
 <div class="clocks" id="clocks"></div>
@@ -314,23 +351,85 @@ let alarmH = null, alarmM = null, alarmTz = null;
 let discoActive = false;
 let audioCtx = null;
 let beepTimer = null;
+let customAudioBuffer = null;
+let customAudioSource = null;
+let loopMode = true;
 
-// ── Audio buzzer ─────────────────────────────────────────────────────
+// ── Song upload ──────────────────────────────────────────────────────
+document.getElementById('songFile').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  document.getElementById('songName').textContent = file.name.length > 28 ? file.name.slice(0,25)+'...' : file.name;
+  document.getElementById('uploadTxt').textContent = 'SONG ÄNDERN';
+  const reader = new FileReader();
+  reader.onload = e => {
+    const tmpCtx = new (window.AudioContext || window.webkitAudioContext)();
+    tmpCtx.decodeAudioData(e.target.result, buf => {
+      customAudioBuffer = buf;
+      tmpCtx.close();
+    }, err => { console.warn('Decode error', err); tmpCtx.close(); });
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+document.getElementById('modeLoop').addEventListener('click', () => {
+  loopMode = true;
+  document.getElementById('modeLoop').classList.add('active');
+  document.getElementById('modeOnce').classList.remove('active');
+});
+document.getElementById('modeOnce').addEventListener('click', () => {
+  loopMode = false;
+  document.getElementById('modeOnce').classList.add('active');
+  document.getElementById('modeLoop').classList.remove('active');
+});
+
+// ── Audio buzzer / song player ────────────────────────────────────────
+function getVolume() {
+  return parseFloat(document.getElementById('volSlider').value);
+}
+
 function startBuzzer() {
+  if (customAudioBuffer) {
+    playSong();
+  } else {
+    playBuzzer();
+  }
+}
+
+function playSong() {
   try {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const gainNode = audioCtx.createGain();
+    gainNode.gain.value = getVolume();
+    gainNode.connect(audioCtx.destination);
+    customAudioSource = audioCtx.createBufferSource();
+    customAudioSource.buffer = customAudioBuffer;
+    customAudioSource.loop = loopMode;
+    customAudioSource.connect(gainNode);
+    customAudioSource.start(0);
+    customAudioSource.onended = () => {
+      if (!loopMode && discoActive) stopDisco(false);
+    };
+  } catch(e) { console.warn('Song play error', e); playBuzzer(); }
+}
+
+function playBuzzer() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const gainNode = audioCtx.createGain();
+    gainNode.connect(audioCtx.destination);
     function beep() {
       if (!discoActive || !audioCtx) return;
       const t = audioCtx.currentTime;
       const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain); gain.connect(audioCtx.destination);
+      const g = audioCtx.createGain();
+      osc.connect(g); g.connect(gainNode);
       osc.type = 'square';
       osc.frequency.setValueAtTime(1046, t);
       osc.frequency.setValueAtTime(784, t + 0.12);
       osc.frequency.setValueAtTime(1046, t + 0.24);
-      gain.gain.setValueAtTime(0.15, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
+      g.gain.setValueAtTime(getVolume() * 0.18, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
       osc.start(t); osc.stop(t + 0.4);
       beepTimer = setTimeout(beep, 600);
     }
@@ -340,6 +439,7 @@ function startBuzzer() {
 
 function stopBuzzer() {
   clearTimeout(beepTimer);
+  if (customAudioSource) { try { customAudioSource.stop(); } catch(e){} customAudioSource = null; }
   if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
 }
 
