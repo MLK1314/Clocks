@@ -1,55 +1,534 @@
 <!DOCTYPE html>
-<html>
+<html lang="de">
 <head>
-    <style>
-        .clock { width: 200px; height: 200px; border: 2px solid black; border-radius: 50%; position: relative; }
-        .hand { position: absolute; width: 50%; height: 4px; background: black; top: 50%; transform-origin: 100%; transition: transform 0.5s cubic-bezier(.4, 2.3, .3, 1); border-radius: 2px; }
-        .hour { width: 35%; margin-left: 15%; height: 6px; }
-        .min { width: 45%; margin-left: 5%; height: 4px; }
-        .sec { width: 50%; height: 2px; background: red; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WORLD TIME WT-2003</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #ff2200; --red-dim: #cc1800; --red-dark: #440800;
+      --amber: #ff9900; --bg: #0d0d0d; --plastic: #1a1a1a;
+      --plastic-light: #252525;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: 'Share Tech Mono', monospace;
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      overflow-x: hidden; transition: background 0.3s;
+    }
+
+    body::after {
+      content: ''; position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.15) 2px, rgba(0,0,0,0.15) 4px);
+      pointer-events: none; z-index: 9999;
+    }
+
+    /* ── DISCO ── */
+    body.disco { animation: discobg 0.4s steps(1) infinite; }
+    @keyframes discobg {
+      0%{background:#1a001a} 12%{background:#001800} 25%{background:#00001a}
+      37%{background:#1a0800} 50%{background:#001a1a} 62%{background:#0a1a00}
+      75%{background:#1a0010} 87%{background:#100015}
+    }
+
+    body.disco .brand { animation: discotxt 0.3s steps(1) infinite; }
+    @keyframes discotxt {
+      0%  {color:#ff00ff;text-shadow:0 0 20px #ff00ff,0 0 50px #ff00ff}
+      17% {color:#00ffff;text-shadow:0 0 20px #00ffff,0 0 50px #00ffff}
+      34% {color:#ffff00;text-shadow:0 0 20px #ffff00,0 0 50px #ffff00}
+      50% {color:#ff4400;text-shadow:0 0 20px #ff4400,0 0 50px #ff4400}
+      67% {color:#00ff88;text-shadow:0 0 20px #00ff88,0 0 50px #00ff88}
+      84% {color:#ff0088;text-shadow:0 0 20px #ff0088,0 0 50px #ff0088}
+    }
+
+    body.disco .body { animation: discoborder 0.35s steps(1) infinite; }
+    @keyframes discoborder {
+      0%  {border-color:#ff00ff;box-shadow:0 0 25px #ff00ff,0 6px 0 #0f0f0f}
+      17% {border-color:#00ffff;box-shadow:0 0 25px #00ffff,0 6px 0 #0f0f0f}
+      34% {border-color:#ffff00;box-shadow:0 0 25px #ffff00,0 6px 0 #0f0f0f}
+      50% {border-color:#ff4400;box-shadow:0 0 25px #ff4400,0 6px 0 #0f0f0f}
+      67% {border-color:#00ff88;box-shadow:0 0 25px #00ff88,0 6px 0 #0f0f0f}
+      84% {border-color:#ff0088;box-shadow:0 0 25px #ff0088,0 6px 0 #0f0f0f}
+    }
+
+    body.disco .lcd-time { animation: discolcd 0.25s steps(1) infinite; }
+    @keyframes discolcd {
+      0%  {color:#ff00ff;text-shadow:0 0 12px #ff00ff,0 0 30px #ff00ff}
+      20% {color:#00ffff;text-shadow:0 0 12px #00ffff,0 0 30px #00ffff}
+      40% {color:#ffff00;text-shadow:0 0 12px #ffff00,0 0 30px #ffff00}
+      60% {color:#00ff88;text-shadow:0 0 12px #00ff88,0 0 30px #00ff88}
+      80% {color:#ff0088;text-shadow:0 0 12px #ff0088,0 0 30px #ff0088}
+    }
+
+    body.disco .bell { animation: bellshake 0.12s ease-in-out infinite alternate; }
+    @keyframes bellshake { from{transform:rotate(-20deg) translateX(-2px)} to{transform:rotate(20deg) translateX(2px)} }
+
+    body.disco .face { animation: discoface 0.4s steps(1) infinite; }
+    @keyframes discoface {
+      0%  {box-shadow:inset 0 0 30px #000,0 0 0 4px #111,0 0 0 5px #222,0 0 35px #ff00ff}
+      33% {box-shadow:inset 0 0 30px #000,0 0 0 4px #111,0 0 0 5px #222,0 0 35px #00ffff}
+      66% {box-shadow:inset 0 0 30px #000,0 0 0 4px #111,0 0 0 5px #222,0 0 35px #ffff00}
+    }
+
+    /* disco ball */
+    .disco-ball {
+      display: none; position: fixed;
+      top: -90px; left: 50%; transform: translateX(-50%);
+      width: 80px; height: 80px; border-radius: 50%;
+      z-index: 9998;
+      background:
+        repeating-conic-gradient(from 0deg, #888 0deg 9deg, #333 9deg 18deg);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+      animation: ballspin 2s linear infinite, balldrop 0.7s cubic-bezier(.2,1.4,.4,1) forwards;
+    }
+    body.disco .disco-ball { display: block; }
+    @keyframes ballspin { to { transform: translateX(-50%) rotate(360deg); } }
+    @keyframes balldrop { to { top: 24px; } }
+
+    /* light beams */
+    .beams { display:none; position:fixed; inset:0; pointer-events:none; z-index:9997; overflow:hidden; }
+    body.disco .beams { display:block; }
+    .beam { position:absolute; top:64px; left:50%; width:4px; height:110vh; transform-origin:top center; opacity:0.1; border-radius:2px; }
+    .beam:nth-child(1){background:#ff00ff;animation:beamspin 2.0s linear infinite}
+    .beam:nth-child(2){background:#00ffff;animation:beamspin 2.4s linear infinite reverse}
+    .beam:nth-child(3){background:#ffff00;animation:beamspin 1.7s linear infinite}
+    .beam:nth-child(4){background:#00ff88;animation:beamspin 3.1s linear infinite reverse}
+    .beam:nth-child(5){background:#ff0088;animation:beamspin 2.2s linear infinite}
+    .beam:nth-child(6){background:#aaff00;animation:beamspin 1.9s linear infinite reverse}
+    .beam:nth-child(7){background:#ff6600;animation:beamspin 2.7s linear infinite}
+    @keyframes beamspin { from{transform:rotate(-80deg)} to{transform:rotate(280deg)} }
+
+    /* ── HEADER ── */
+    header {
+      width:100%; padding:32px 40px 20px;
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      border-bottom:1px solid #1e1e1e; position:relative; z-index:10;
+    }
+    .brand {
+      font-family:'Orbitron',monospace; font-size:clamp(28px,5vw,52px);
+      font-weight:900; letter-spacing:14px; color:var(--red);
+      text-shadow:0 0 10px var(--red),0 0 30px var(--red-dim),0 0 60px rgba(200,20,0,0.3);
+    }
+    .brand-sub { font-size:10px; letter-spacing:6px; color:#444; text-transform:uppercase; }
+    .cursor {
+      display:inline-block; width:10px; height:16px;
+      background:var(--red); margin-left:4px; vertical-align:middle;
+      animation:blink 1s step-end infinite;
+    }
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+    /* ── ALARM PANEL ── */
+    .alarm-panel {
+      background:#111; border:1px solid #222; border-radius:12px;
+      padding:20px 28px; margin:28px 24px 0;
+      width:100%; max-width:740px;
+      display:flex; flex-wrap:wrap; gap:14px;
+      align-items:center; justify-content:center;
+      position:relative; z-index:10;
+    }
+    .panel-title {
+      width:100%; font-family:'Orbitron',monospace;
+      font-size:9px; font-weight:700; letter-spacing:4px; color:#444; text-align:center;
+    }
+    .alarm-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; }
+    .alarm-row label { font-size:9px; letter-spacing:2px; color:#555; }
+    .time-input {
+      background:#0a0a0a; border:1px solid #2a2a2a; border-radius:6px;
+      color:var(--red); font-family:'Orbitron',monospace;
+      font-size:18px; font-weight:700; width:90px; padding:6px 10px;
+      text-align:center; outline:none; text-shadow:0 0 6px var(--red);
+    }
+    .time-input:focus { border-color:var(--red); box-shadow:0 0 8px rgba(255,34,0,0.3); }
+    .tz-select {
+      background:#0a0a0a; border:1px solid #2a2a2a; border-radius:6px;
+      color:#888; font-family:'Share Tech Mono',monospace; font-size:11px; padding:6px 10px; outline:none;
+    }
+    .tz-select:focus { border-color:var(--red); }
+    .btn-set {
+      background:var(--red-dark); border:1px solid #880000; border-radius:6px;
+      color:var(--red); font-family:'Orbitron',monospace; font-size:9px;
+      font-weight:700; letter-spacing:3px; padding:8px 18px; cursor:pointer;
+      text-shadow:0 0 6px var(--red); transition:background 0.2s, box-shadow 0.2s;
+    }
+    .btn-set:hover { background:#330000; box-shadow:0 0 12px rgba(255,34,0,0.4); }
+    .btn-set:active { transform:scale(0.97); }
+    .btn-clear {
+      background:#0a0a0a; border:1px solid #222; border-radius:6px;
+      color:#444; font-family:'Orbitron',monospace; font-size:9px;
+      font-weight:700; letter-spacing:3px; padding:8px 18px; cursor:pointer;
+      transition:background 0.2s;
+    }
+    .btn-clear:hover { background:#161616; color:#666; }
+    .alarm-status {
+      font-size:9px; letter-spacing:2px; color:#444; text-align:center;
+      width:100%; min-height:14px; transition:color 0.3s;
+    }
+    .alarm-status.active { color:#880000; animation:pulse 1s ease-in-out infinite; }
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+    /* ── CLOCKS ── */
+    .clocks {
+      display:flex; flex-wrap:wrap; gap:32px;
+      justify-content:center; padding:40px 24px;
+      position:relative; z-index:10;
+    }
+
+    .alarm-unit {
+      display:flex; flex-direction:column; align-items:center; gap:0;
+      opacity:0; transform:translateY(30px);
+      animation:fadeup 0.6s ease forwards;
+    }
+    .alarm-unit:nth-child(1){animation-delay:0.1s}
+    .alarm-unit:nth-child(2){animation-delay:0.25s}
+    .alarm-unit:nth-child(3){animation-delay:0.4s}
+    @keyframes fadeup{to{opacity:1;transform:translateY(0)}}
+
+    .bells { width:220px; display:flex; justify-content:space-between; padding:0 14px; }
+    .bell {
+      width:26px; height:26px; background:var(--plastic-light);
+      border-radius:50%; border:3px solid #2c2c2c; position:relative;
+    }
+    .bell::after {
+      content:''; position:absolute; bottom:-8px; left:50%; transform:translateX(-50%);
+      width:3px; height:8px; background:#2c2c2c;
+    }
+
+    .body {
+      width:220px; background:var(--plastic);
+      border-radius:16px 16px 10px 10px; border:2px solid #2a2a2a;
+      padding:18px 18px 14px;
+      box-shadow:0 6px 0 #0f0f0f,0 8px 0 #080808,inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .city-strip {
+      background:var(--red-dark); border-radius:4px; margin-bottom:14px;
+      padding:5px 8px; display:flex; justify-content:space-between; align-items:center;
+    }
+    .city-name { font-family:'Orbitron',monospace; font-size:10px; font-weight:700; letter-spacing:3px; color:var(--red); text-shadow:0 0 6px var(--red); }
+    .city-tz { font-size:8px; color:#551100; letter-spacing:1px; }
+
+    .face-wrap { display:flex; justify-content:center; margin-bottom:14px; }
+    .face {
+      width:150px; height:150px; border-radius:50%; background:#080808;
+      border:3px solid #1e1e1e; position:relative;
+      box-shadow:inset 0 0 30px #000,inset 0 0 8px rgba(200,0,0,0.15),0 0 0 4px #111,0 0 0 5px #222;
+    }
+    .face::before { content:''; position:absolute; inset:8px; border-radius:50%; border:1px solid #1a1a1a; }
+
+    .hand { position:absolute; bottom:50%; left:50%; transform-origin:bottom center; border-radius:2px 2px 0 0; transition:transform 0.25s cubic-bezier(.4,2.2,.3,1); }
+    .h-hour { width:5px; height:42px; margin-left:-2.5px; background:#cc2000; box-shadow:0 0 6px #ff2200,0 0 12px rgba(255,34,0,0.4); }
+    .h-min  { width:3px; height:58px; margin-left:-1.5px; background:#ff4400; box-shadow:0 0 5px #ff6600,0 0 10px rgba(255,80,0,0.3); }
+    .h-sec  { width:1.5px; height:66px; margin-left:-0.75px; background:var(--amber); box-shadow:0 0 6px var(--amber),0 0 14px rgba(255,153,0,0.5); border-radius:1px; transition:transform 0.05s linear; }
+    .h-sec-tail { width:1.5px; height:18px; margin-left:-0.75px; background:rgba(255,153,0,0.5); position:absolute; top:50%; left:50%; transform-origin:top center; border-radius:0 0 1px 1px; }
+    .center-cap { position:absolute; width:10px; height:10px; background:var(--red); border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); z-index:20; box-shadow:0 0 6px var(--red),0 0 12px rgba(255,0,0,0.5); }
+
+    .lcd { background:#050505; border:1px solid #1a1a1a; border-radius:6px; padding:8px 10px 6px; text-align:center; position:relative; overflow:hidden; }
+    .lcd::before { content:''; position:absolute; inset:0; background:repeating-linear-gradient(90deg,rgba(255,30,0,0.02) 0px,rgba(255,30,0,0.02) 1px,transparent 1px,transparent 4px); pointer-events:none; }
+    .lcd-time { font-family:'Orbitron',monospace; font-size:28px; font-weight:900; color:var(--red); text-shadow:0 0 8px var(--red),0 0 20px var(--red-dim); letter-spacing:3px; line-height:1; }
+    .lcd-meta { display:flex; justify-content:space-between; margin-top:5px; }
+    .lcd-date, .lcd-day { font-size:9px; letter-spacing:2px; color:#550000; }
+    .lcd-alarm-ind { font-size:8px; letter-spacing:1px; color:#880000; margin-top:4px; min-height:13px; text-align:center; }
+
+    .foot { display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:10px; border-top:1px solid #1e1e1e; }
+    .btn-sm { width:24px; height:9px; background:#111; border-radius:3px; border:1px solid #2a2a2a; }
+    .btn-snooze {
+      background:#1c0000; border:1px solid #3a0000; border-radius:4px;
+      padding:5px 14px; font-family:'Share Tech Mono',monospace;
+      font-size:9px; color:#550000; letter-spacing:2px; cursor:pointer;
+      transition:background 0.2s, color 0.2s;
+    }
+    .btn-snooze:hover { background:#330000; color:#880000; }
+
+    .feet { width:180px; display:flex; justify-content:space-between; padding:0 16px; }
+    .foot-leg { width:14px; height:8px; background:#111; border-radius:0 0 4px 4px; border:1px solid #1e1e1e; border-top:none; }
+
+    footer { margin-top:auto; padding:20px; font-size:9px; letter-spacing:3px; color:#2a2a2a; text-align:center; position:relative; z-index:10; }
+
+    /* STOP ALARM BUTTON */
+    .stop-alarm-btn {
+      display:none; position:fixed; bottom:40px; left:50%; transform:translateX(-50%);
+      z-index:10000; background:#cc0044; border:3px solid #ff6699;
+      border-radius:50px; padding:16px 42px;
+      font-family:'Orbitron',monospace; font-size:14px; font-weight:900;
+      color:#fff; letter-spacing:4px; cursor:pointer;
+      animation:btnpulse 0.5s ease-in-out infinite alternate;
+    }
+    body.disco .stop-alarm-btn { display:block; }
+    @keyframes btnpulse {
+      from{box-shadow:0 0 20px #ff0055,0 0 0 0 rgba(255,0,85,0.5)}
+      to  {box-shadow:0 0 60px #ff0055,0 0 0 12px rgba(255,0,85,0)}
+    }
+  </style>
 </head>
 <body>
-    <h3>Berlin</h3>
-    <div class="clock" id="berlin">
-        <div class="hand hour" id="berlin-hour"></div>
-        <div class="hand min" id="berlin-min"></div>
-        <div class="hand sec" id="berlin-sec"></div>
+
+<div class="disco-ball"></div>
+<div class="beams">
+  <div class="beam"></div><div class="beam"></div><div class="beam"></div>
+  <div class="beam"></div><div class="beam"></div><div class="beam"></div>
+  <div class="beam"></div>
+</div>
+
+<header>
+  <div class="brand">WORLD TIME<span class="cursor"></span></div>
+  <div class="brand-sub">Global Clock Station — Model WT-2003</div>
+</header>
+
+<div class="alarm-panel">
+  <div class="panel-title">⏰ &nbsp; ALARM EINSTELLEN &nbsp; ⏰</div>
+  <div class="alarm-row">
+    <label>ZEIT</label>
+    <input type="time" class="time-input" id="alarmTime" value="07:00" />
+    <label>ZEITZONE</label>
+    <select class="tz-select" id="alarmTz">
+      <option value="Europe/Berlin">Berlin (CET)</option>
+      <option value="America/New_York">New York (EST)</option>
+      <option value="Asia/Kolkata">Indien (IST)</option>
+    </select>
+    <button class="btn-set" id="btnSet">SET ALARM</button>
+    <button class="btn-clear" id="btnClear">CLEAR</button>
+  </div>
+  <div class="alarm-status" id="alarmStatus">KEIN ALARM GESETZT</div>
+</div>
+
+<div class="clocks" id="clocks"></div>
+<button class="stop-alarm-btn" id="stopAlarm">⬛ &nbsp; SNOOZE / STOP</button>
+
+<footer>© 2003 WORLDTIME CORP &nbsp;·&nbsp; ALL RIGHTS RESERVED &nbsp;·&nbsp; v2.03.1</footer>
+
+<script>
+const CITIES = [
+  { id:'berlin', name:'BERLIN',   tz:'Europe/Berlin',   tzLabel:'CET/CEST' },
+  { id:'nyc',    name:'NEW YORK', tz:'America/New_York', tzLabel:'EST/EDT'  },
+  { id:'india',  name:'INDIA',    tz:'Asia/Kolkata',     tzLabel:'IST +5:30'},
+];
+const DAYS   = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+
+let alarmH = null, alarmM = null, alarmTz = null;
+let discoActive = false;
+let audioCtx = null;
+let beepTimer = null;
+
+// ── Audio buzzer ─────────────────────────────────────────────────────
+function startBuzzer() {
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function beep() {
+      if (!discoActive || !audioCtx) return;
+      const t = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(1046, t);
+      osc.frequency.setValueAtTime(784, t + 0.12);
+      osc.frequency.setValueAtTime(1046, t + 0.24);
+      gain.gain.setValueAtTime(0.15, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.36);
+      osc.start(t); osc.stop(t + 0.4);
+      beepTimer = setTimeout(beep, 600);
+    }
+    beep();
+  } catch(e) { console.warn('AudioContext unavailable'); }
+}
+
+function stopBuzzer() {
+  clearTimeout(beepTimer);
+  if (audioCtx) { try { audioCtx.close(); } catch(e){} audioCtx = null; }
+}
+
+// ── Disco ────────────────────────────────────────────────────────────
+function startDisco() {
+  discoActive = true;
+  document.body.classList.add('disco');
+  startBuzzer();
+  refreshAlarmInds();
+}
+
+function stopDisco(snooze) {
+  discoActive = false;
+  document.body.classList.remove('disco');
+  stopBuzzer();
+  if (snooze && alarmH !== null) {
+    let sm = alarmM + 5, sh = alarmH;
+    if (sm >= 60) { sm -= 60; sh = (sh + 1) % 24; }
+    alarmH = sh; alarmM = sm;
+    document.getElementById('alarmTime').value = `${String(sh).padStart(2,'0')}:${String(sm).padStart(2,'0')}`;
+    const tzName = document.getElementById('alarmTz').selectedOptions[0].text;
+    setStatus(`SNOOZE: ${String(sh).padStart(2,'0')}:${String(sm).padStart(2,'0')} — ${tzName}`, true);
+  }
+  refreshAlarmInds();
+}
+
+// ── Alarm controls ───────────────────────────────────────────────────
+function setStatus(msg, active) {
+  const el = document.getElementById('alarmStatus');
+  el.textContent = msg;
+  el.classList.toggle('active', !!active);
+}
+
+document.getElementById('btnSet').addEventListener('click', () => {
+  const val = document.getElementById('alarmTime').value;
+  if (!val) return;
+  [alarmH, alarmM] = val.split(':').map(Number);
+  alarmTz = document.getElementById('alarmTz').value;
+  const tzName = document.getElementById('alarmTz').selectedOptions[0].text;
+  setStatus(`ALARM AKTIV: ${String(alarmH).padStart(2,'0')}:${String(alarmM).padStart(2,'0')} — ${tzName}`, true);
+  refreshAlarmInds();
+  if (discoActive) stopDisco(false);
+});
+
+document.getElementById('btnClear').addEventListener('click', () => {
+  alarmH = alarmM = alarmTz = null;
+  setStatus('KEIN ALARM GESETZT', false);
+  refreshAlarmInds();
+  if (discoActive) stopDisco(false);
+});
+
+document.getElementById('stopAlarm').addEventListener('click', () => stopDisco(true));
+
+// Snooze buttons on clocks
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('btn-snooze') && discoActive) stopDisco(true);
+});
+
+function refreshAlarmInds() {
+  CITIES.forEach(city => {
+    const el = document.getElementById(`${city.id}-alarm-ind`);
+    if (!el) return;
+    if (alarmH !== null && alarmTz === city.tz) {
+      el.textContent = discoActive
+        ? '🔔 ALARM! 🔔'
+        : `⏰ ${String(alarmH).padStart(2,'0')}:${String(alarmM).padStart(2,'0')}`;
+    } else {
+      el.textContent = '';
+    }
+  });
+}
+
+function checkAlarm() {
+  if (alarmH === null || discoActive) return;
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: alarmTz }));
+  if (d.getHours() === alarmH && d.getMinutes() === alarmM && d.getSeconds() === 0) startDisco();
+}
+
+// ── Build clocks ─────────────────────────────────────────────────────
+function buildClock(city) {
+  const unit = document.createElement('div');
+  unit.className = 'alarm-unit';
+  unit.innerHTML = `
+    <div class="bells"><div class="bell"></div><div class="bell"></div></div>
+    <div class="body">
+      <div class="city-strip">
+        <span class="city-name">${city.name}</span>
+        <span class="city-tz">${city.tzLabel}</span>
+      </div>
+      <div class="face-wrap">
+        <div class="face" id="${city.id}-face">
+          <div class="center-cap"></div>
+          <div class="hand h-hour" id="${city.id}-hour"></div>
+          <div class="hand h-min"  id="${city.id}-min"></div>
+          <div class="hand h-sec"  id="${city.id}-sec"></div>
+          <div class="h-sec-tail"  id="${city.id}-sectail"></div>
+        </div>
+      </div>
+      <div class="lcd">
+        <div class="lcd-time" id="${city.id}-digi">00:00:00</div>
+        <div class="lcd-meta">
+          <span class="lcd-date" id="${city.id}-date">---</span>
+          <span class="lcd-day"  id="${city.id}-day">---</span>
+        </div>
+        <div class="lcd-alarm-ind" id="${city.id}-alarm-ind"></div>
+      </div>
+      <div class="foot">
+        <div class="btn-sm"></div>
+        <div class="btn-snooze">SNOOZE</div>
+        <div class="btn-sm"></div>
+      </div>
     </div>
-    <div id="berlin-digi"></div>
-    <h3>NYC</h3>
-    <div class="clock" id="nyc">
-        <div class="hand hour" id="nyc-hour"></div>
-        <div class="hand min" id="nyc-min"></div>
-        <div class="hand sec" id="nyc-sec"></div>
-    </div>
-    <div id="nyc-digi"></div>
+    <div class="feet"><div class="foot-leg"></div><div class="foot-leg"></div></div>
+  `;
+  document.getElementById('clocks').appendChild(unit);
+  drawTicks(city.id);
+}
 
-    <script>
-        function updateClocks() {
-            const getParts = (tz) => {
-                const date = new Date(new Date().toLocaleString("en-US", { timeZone: tz }));
-                return { h: date.getHours(), m: date.getMinutes(), s: date.getSeconds() };
-            };
+function drawTicks(id) {
+  const face = document.getElementById(`${id}-face`);
+  const cx = 75, cy = 75;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 150 150');
+  svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;';
 
-            const b = getParts('Europe/Berlin');
-            const n = getParts('America/New_York');
+  for (let i = 0; i < 60; i++) {
+    const major = i % 5 === 0, r = 67, len = major ? 11 : 5;
+    // 0 = top (12 o'clock), clockwise
+    const angle = (i * 6 - 90) * Math.PI / 180;
+    const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
+    const x2 = cx + (r-len) * Math.cos(angle), y2 = cy + (r-len) * Math.sin(angle);
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+    line.setAttribute('stroke', major ? '#4a1000' : '#1e1e1e');
+    line.setAttribute('stroke-width', major ? '2' : '1');
+    svg.appendChild(line);
 
-            rotate('berlin', b.h, b.m, b.s);
-            rotate('nyc', n.h, n.m, n.s);
-            
-            document.getElementById('berlin-digi').innerText = `${b.h}:${b.m.toString().padStart(2, '0')}`;
-            document.getElementById('nyc-digi').innerText = `${n.h}:${n.m.toString().padStart(2, '0')}`;
-        }
+    if (major) {
+      // i=0 → 12, i=5 → 1, i=10 → 2 ... i=55 → 11
+      const num = i === 0 ? 12 : i / 5;
+      const tr = r - 20;
+      const tx = cx + tr * Math.cos(angle), ty = cy + tr * Math.sin(angle);
+      const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+      text.setAttribute('x', tx); text.setAttribute('y', ty + 3);
+      text.setAttribute('text-anchor','middle'); text.setAttribute('dominant-baseline','middle');
+      text.setAttribute('fill','#661100');
+      text.setAttribute('font-family','Orbitron,monospace');
+      text.setAttribute('font-size','8'); text.setAttribute('font-weight','700');
+      text.textContent = num;
+      svg.appendChild(text);
+    }
+  }
+  face.appendChild(svg);
+}
 
-        function rotate(city, h, m, s) {
-            document.getElementById(`${city}-hour`).style.transform = `rotate(${h * 30 + m * 0.5 + 90}deg)`;
-            document.getElementById(`${city}-min`).style.transform = `rotate(${m * 6 + 90}deg)`;
-            document.getElementById(`${city}-sec`).style.transform = `rotate(${s * 6 + 90}deg)`;
-        }
+function getParts(tz) {
+  const d = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
+  return { h: d.getHours(), m: d.getMinutes(), s: d.getSeconds(), d };
+}
 
-        setInterval(updateClocks, 1000);
-        updateClocks();
-    </script>
+function rot(id, h, m, s) {
+  const hd = ((h % 12) * 30) + (m * 0.5);
+  const md = (m * 6) + (s * 0.1);
+  const sd = s * 6;
+  document.getElementById(`${id}-hour`).style.transform = `rotate(${hd}deg)`;
+  document.getElementById(`${id}-min`).style.transform  = `rotate(${md}deg)`;
+  document.getElementById(`${id}-sec`).style.transform  = `rotate(${sd}deg)`;
+  document.getElementById(`${id}-sectail`).style.transform = `rotate(${sd + 180}deg)`;
+}
+
+function update() {
+  CITIES.forEach(city => {
+    const p = getParts(city.tz);
+    rot(city.id, p.h, p.m, p.s);
+    const hh = String(p.h).padStart(2,'0');
+    const mm = String(p.m).padStart(2,'0');
+    const ss = String(p.s).padStart(2,'0');
+    document.getElementById(`${city.id}-digi`).textContent = `${hh}:${mm}:${ss}`;
+    document.getElementById(`${city.id}-date`).textContent =
+      `${p.d.getDate().toString().padStart(2,'0')} ${MONTHS[p.d.getMonth()]} ${p.d.getFullYear()}`;
+    document.getElementById(`${city.id}-day`).textContent = DAYS[p.d.getDay()];
+  });
+  checkAlarm();
+}
+
+CITIES.forEach(buildClock);
+update();
+setInterval(update, 1000);
+</script>
 </body>
 </html>
